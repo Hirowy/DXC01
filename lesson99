@@ -1,0 +1,109 @@
+# sample  Rails/PostgreSQL アプリを設定し実行する手順
+
+mkdir work3
+cd work3
+vi Dockerfile
+
+### Dockerfile ####
+# syntax=docker/dockerfile:1
+FROM ruby:2.5
+RUN apt-get update -qq && apt-get install -y nodejs postgresql-client
+WORKDIR /myapp
+COPY Gemfile /myapp/Gemfile
+COPY Gemfile.lock /myapp/Gemfile.lock
+RUN bundle install
+
+# コンテナー起動時に毎回実行されるスクリプトを追加
+COPY entrypoint.sh /usr/bin/
+RUN chmod +x /usr/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+EXPOSE 3000
+
+# イメージ実行時に起動させる主プロセスを設定
+CMD ["rails", "server", "-b", "0.0.0.0"]
+
+### ブートストラップを行うファイルGemfileを生成して、Rails をロードできるようにする ###
+
+vi Gemfile
+#### Gemfile ####
+source 'https://rubygems.org'
+gem 'rails', '~>5'
+
+### 空のファイルGemfile.lockを生成してDockerfileのビルドができるように ###
+touch Gemfile.lock
+
+### サーバーが再起動できなくなる問題を回避するものスクリプト作成　entrypoint.sh ###
+
+vi entrypoint.sh
+#### entrypoint.sh ####
+#!/bin/bash
+set -e
+
+# Rails に対応したファイル server.pid が存在しているかもしれないので削除する。
+rm -f /myapp/tmp/pids/server.pid
+
+# コンテナーのプロセスを実行する。（Dockerfile 内の CMD に設定されているもの。）
+exec "$@"
+
+
+
+vi docker-compose.yml
+#### docker-compose.yml ####
+version: "3.9"
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./tmp/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+  web:
+    build: .
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    volumes:
+      - .:/myapp
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+
+### Rails アプリのひながたを生成 ###
+docker-compose run --no-deps web rails new . --force --database=postgresql
+
+ls -l
+### 生成されたファイルの所有者を変更 ###
+sudo chown -R $USER:$USER .
+ls -l
+
+### イメージを再ビルドする ###
+docker-compose build
+
+### postgresイメージにおいて設定されているデフォルトのデータベース名、ユーザー名を変更 ###
+vi config/database.yml
+
+#### composeexample/settings.py ####
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  host: db
+  username: postgres
+  password: password
+  pool: 5
+
+development:
+  <<: *default
+  database: myapp_development
+
+
+test:
+  <<: *default
+  database: myapp_test
+
+
+docker-compose up
+
+### 別の端末からデータベースを生成する ###
+docker-compose run web rake db:create
+
+Please access "http://localhost:3000

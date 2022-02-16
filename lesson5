@@ -1,0 +1,139 @@
+###### Lesson 5 #######
+
+### 5-3 ###
+docker search ubuntu
+docker search -f is-official=true ubuntu
+https://hub.docker.com/
+
+### 5-4 ###
+mkdir work1
+cd work1
+vi Dockerfile
+
+#Dockerfile
+FROM busybox:1
+CMD echo 'Hello, world!'
+
+## vi操作が苦手な方は、以下のコマンドでDockerfileを作成してください ##
+cat << EOF > Dockerfile
+FROM busybox:1
+CMD echo 'Hello, world!'
+EOF
+
+ls
+docker build -t myname/sample:1.0 .       //mynameはDockerHubのIDで記載しますが、今回はこのままでOK
+docker images
+docker run -it myname/sample:1.0
+docker ps -a
+docker run -it myname/sample:1.0 echo 'Good morning'
+vi Dockerfile
+
+#Dockerfile
+FROM busybox:1
+CMD echo 'Bye-bye, world!'
+
+## vi操作が苦手な方は、以下のコマンドでDockerfileを作成してください ##
+cat << EOF > Dockerfile
+FROM busybox:1
+CMD echo 'Bye-bye, world!'
+EOF
+
+docker build -t myname/sample:2.0 .
+docker images
+docker build -t myname/sample:latest .
+docker images
+docker run -it myname/sample:2.0
+docker run -it myname/sample        // docker run -it myname/sample:latest　と同じ意味となります
+
+### 5-5 ###
+docker images
+docker rmi myname/sample:1.0        // コンテナが存在する場合は、オプション--force や -f　を付けます
+docker rmi eac7197f24a9             // myname/sample:2.0 のイメージIDは修正します
+docker rmi --force eac7197f24a9     // myname/sample:2.0 のイメージIDは修正します
+
+### 5-6 ###
+cd
+mkdir work2
+cd work2
+vi index.html
+
+#index.html
+<html>
+<title>Hello world</title>
+<body>
+<h1>Hello world</h1>
+<p>Welcome to my page!!</p>
+</body>
+</html>
+
+## vi操作が苦手な方は、以下のコマンドでDockerfileを作成してください ##
+echo '<html><title>Hello world</title><body><h1>Hello world</h1><p>Welcome to my page!!</p></body></html>' > index.html
+
+vi Dockerfile
+
+#Dockerfile
+ARG version=1
+FROM busybox:$version
+# httpd container
+ENV HOME="/var/www/html/"
+RUN mkdir $HOME
+COPY index.html $HOME
+EXPOSE 80
+CMD ["-h", "/var/www/html/"]
+ENTRYPOINT [ "httpd", "-f" ]
+
+## vi操作が苦手な方は、以下のコマンドでDockerfileを作成してください ##
+cat << EOF > Dockerfile
+ARG version=1
+FROM busybox:\$version
+# httpd container
+ENV HOME="/var/www/html/"
+RUN mkdir \$HOME
+COPY index.html \$HOME
+EXPOSE 80
+CMD ["-h", "/var/www/html/"]
+ENTRYPOINT [ "httpd", "-f" ]
+EOF
+
+
+docker build -t myname/web:1.0 .
+docker images
+docker run -d -p 80:80 myname/web:1.0
+curl http://localhost
+
+## ブラウザからアクセスしてみましょう ##
+http://<ホストIPアドレス or ホスト名>:/
+
+### 5-7 ###
+## ブラウザからDocker Hubのサイトにアクセスしてみましょう ##
+https://hub.docker.com/
+
+### 5-8 ###
+docker login
+
+### 5-9 ###
+docker images
+docker push myname/web:1.0
+
+### 5-10 ###
+docker rm -f condescending_keldysh      // myname/web:1.0 のコンテナを削除してからイメージを削除します　コンテナ名を修正します
+docker rmi myname/web:1.0
+docker images
+docker pull myname/web:1.0
+
+### 5-11 ###
+docker history myname/web:1.0
+
+### 5-12 ###
+docker tag myname/web:1.0 myname/web:latest
+docker images
+
+### 5-13 ###
+docker save myname/web:1.0 > web.1.0.tar
+ls -lh
+
+### 5-14 ###
+docker rmi myname/web:1.0
+docker images
+docker load < web.1.0.tar
+docker images

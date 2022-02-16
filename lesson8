@@ -1,0 +1,115 @@
+###### Lesson 8 #######
+
+### 8-1 ###
+https://docs.docker.com/compose/install/    // Docker Composeサイト
+
+## Docker Composeインストールコマンド ##
+sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+docker-compose --version
+
+## 試してみましょう ##
+vi docker-compose.yml
+-----------------------------
+version: "3.8"
+services:
+  testweb:
+    image: "httpd"
+    ports:
+      - "8080:80"
+-----------------------------
+docker-compose up -d
+docker-compose ps
+
+## ブラウザでアクセスしてみましょう ## 　// It Works! が出力されれば成功です
+http://<ホストIPアドレス or ホスト名>:8080
+
+docker-compose down
+
+##　（参考）以下docker runコマンドと同じことを実行したことになります ##
+docker run --name testweb -d -p 8080:80 httpd
+
+
+### 8-2 ###
+cd
+mkdir mycompose
+cd mycompose
+cp ../work2/Dockerfile .
+cp ../work2/index.html .
+vi docker-compose.yml
+
+### docker-compose.yml ###
+version: "3.8"
+services:
+  myweb:
+    build: .
+    ports:
+      - "8080:80"
+  apache:
+    image: "httpd:latest"
+    ports:
+      - "80:80"
+      
+## まだ、ここで不要なコンテナを削除していない場合は、全て削除すると分かりやすいです ##
+## 全コンテナ一括削除（稼働中も全て）するコマンド ##
+docker rm -f $(docker ps -a -q)
+
+## 全イメージ一括削除するコマンド ##
+docker rmi -f $(docker images -q)
+
+docker-compose up -d
+docker-compose ps
+
+## ここで２つのWeb画面をチェックしましょう ##
+http://ec2-xx-xx-xx-xx.ap-northeast-1.compute.amazonaws.com:8080  ## ホスト名は自身のモノに変更
+http://ec2-xx-xx-xx-xx.ap-northeast-1.compute.amazonaws.com:80　　## ホスト名は自身のモノに変更（80は省略可能）
+
+docker-compose down
+docker-compose ps
+
+####　ここはオプションです。もしお時間あれば試してください  ####
+
+# WordPress（ブログ）のコンテナを作成してみましょう
+# 上記で作成したDockerfileはそのままに(無くても良いです）、dockercompose.ymlを以下のように置き換え（書き直し）
+
+# WordPress用のdockercompose.ymlファイルです
+version: '3.3'
+
+services:
+   db:
+     image: mysql:5.7
+     volumes:
+       - db_data:/var/lib/mysql
+     restart: always
+     environment:
+       MYSQL_ROOT_PASSWORD: somewordpress
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: wordpress
+       MYSQL_PASSWORD: wordpress
+
+   wordpress:
+     depends_on:
+       - db
+     image: wordpress:latest
+     ports:
+       - "8000:80"
+     restart: always
+     environment:
+       WORDPRESS_DB_HOST: db:3306
+       WORDPRESS_DB_USER: wordpress
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_NAME: wordpress
+volumes:
+    db_data: {}
+    
+    
+    
+docker-compose up -d
+docker-compose ps
+
+### ブラウザ上では、http://ホスト名:8000　でアクセスしてみましょう ###
+###  時間があるかたは、簡単にWordPressを利用してブログを作成してみましょう ###
+ 
+# 確認終了後　後処理
+docker-compose down
+docker-compose ps
